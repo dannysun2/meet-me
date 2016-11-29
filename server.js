@@ -6,10 +6,10 @@ var geocoder = require('geocoder');
 var config = require('./config');
 
 var yelp = new Yelp({
-  consumer_key: config.consumer_key,
-  consumer_secret: config.consumer_secret,
-  token: config.token,
-  token_secret: config.token_secret
+  consumer_key: config.yelp.consumer_key,
+  consumer_secret: config.yelp.consumer_secret,
+  token: config.yelp.token,
+  token_secret: config.yelp.token_secret
 });
 
 app.use('/assets', express.static(path.join(__dirname, 'public')))
@@ -19,40 +19,31 @@ app.get('/', (req, res) => {
 })
 
 app.get('/:location/:next_location', (req, res) => {
-    
-    if (req.params.location != '' && req.params.next_location != '') {
-        geocoder.geocode(req.params.location, function ( err, data ) {
-            geocoder.geocode(req.params.next_location, function (err, datas) {
-
-                
-                var points = {
-                    first: data.results[0].geometry.location,
-                    second: datas.results[0].geometry.location
-                }
-
-                var midX = (points.first.lat + points.second.lat) / 2
-                var midY = (points.first.lng + points.second.lng) / 2
-                console.log(midX, midY)
-                midpoint = {
-                    x: midX,
-                    y: midY
-                }
-                yelp.search({ term: 'food', ll: `${midpoint.x}, ${midpoint.y}` })
-                    .then(function (data) {
-                        res.send(data)
-                    })
-                    .catch(function (err) {
-                    console.error(err);
-                    });
-
-
-            });
-                            
-        });
-    } else {
-        console.log('NO LOCATION SENT!')
+    console.log(yelp)
+    function geocodePromise(data) {
+        return new Promise(function (resolve, reject) {
+            geocoder.geocode(data, function (err, data) {
+                if (data) { resolve(data) }
+            })
+        })
     }
 
+    var points = {}
+    geocodePromise(req.params.location)
+    .then((data) => {
+        points.location1 = data.results[0].geometry.location
+        return geocodePromise(req.params.next_location)
+    })
+    .then(data => {
+        points.location2 = data.results[0].geometry.location
+    })
+    .then(data => {
+        var midX = (points.location1.lat + points.location2.lat) / 2
+        var midY = (points.location1.lng + points.location2.lng) / 2
+        return yelp.search({term: 'food', ll: `${midX}, ${midY}`})
+    })
+    .then(data => { res.send(data) })
+    .catch((err) => { res.send(err) })
 });
 
 app.listen(3000, () => {
