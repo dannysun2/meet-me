@@ -5,7 +5,7 @@ const Button = (props) => {
         props._handleClick()
     }
     
-    return (<input type="button" value="Find Food" onClick={_handleBtn}/>);
+    return (<input className="btn btn-block btn-lg btn-theme-2" type="button" value="Find Food" onClick={_handleBtn}/>);
 }
 
 export default Button;
